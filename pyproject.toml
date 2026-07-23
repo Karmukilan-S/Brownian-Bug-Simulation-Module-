@@ -1,0 +1,14 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "bug_engine"
+version = "0.1.0"
+description = "My Brownian Bug simulation toolkit"
+dependencies = [
+    "numpy",
+    "scipy",
+    "matplotlib"
+    
+]
