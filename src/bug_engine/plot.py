@@ -7,7 +7,7 @@ from concurrent.futures import ProcessPoolExecutor
 from .config import SimParam
 from .ensemble import ensemble_simulate
 from .stat import stat0
-from .Master_equation import Mu_sweep_1,s_sweep_1,Mu_sweep_2
+from .Master_equation import Mu_sweep_1,s_sweep_1,Mu_sweep_2,mu_sweep_fano
 
 from pathlib import Path
 
@@ -16,9 +16,11 @@ ROOT = Path(__file__).resolve().parents[2]
 SAVE_DIR_1 = ROOT / "Plots" / "Seed_convergence"
 SAVE_DIR_2=ROOT/"Plots"/"master_equation"
 SAVE_DIR_3=ROOT/"Plots"/"master_equation_s"
+SAVE_DIR_4=ROOT/"Plots"/"estimates"
 SAVE_DIR_1.mkdir(parents=True, exist_ok=True)
 SAVE_DIR_2.mkdir(parents=True,exist_ok=True)
 SAVE_DIR_3.mkdir(parents=True,exist_ok=True)
+SAVE_DIR_4.mkdir(parents=True,exist_ok=True)
 
 def plot_seed_convergence(b0:float,
           d0:float,
@@ -27,9 +29,8 @@ def plot_seed_convergence(b0:float,
           params:SimParam,
           seeds_val:list,
           max_CPU:int|None=None,
-          save=False,
-    save_dir=None,
-    filename="seed_convergence.png"
+        save_dir=None,
+    
 ):
     n=max(seeds_val)
     t_val,N_ensemble=ensemble_simulate(b0,d0,b1,d1,params,n,max_CPU)
@@ -62,10 +63,10 @@ def plot_seed_convergence(b0:float,
     plt.subplot(1,2,2)
     plt.legend(loc="upper right",fontsize=14)
     filename=f"Seed_convergence_(b0,d0,b1,d1)={(b0,d0,b1,d1)}_Simparam={params}_seed_val_max={n}.png"
-    if save:
-        plt.savefig(SAVE_DIR_1/filename,dpi=300)
-    else:
+    if save_dir is None:
         plt.show()
+    else:
+        plt.savefig(save_dir/filename,dpi=300)
     
 def master_eqn_plot(mu_val:np.ndarray,
             x:float,
@@ -175,7 +176,7 @@ def master_eqn_plot_s(val,s:float,d1_size:int,
         file_name=f"d1_sweep_with_s={s}_interval_size={d1_size}_params={params}_num_seeds={num_seeds}_b0,d0_pairs={val}.png" 
         plt.savefig(save_dir/file_name,dpi=300)   
     
-def plot_dist(b0,d0,b1,d1,params,seed):
+def plot_dist(b0,d0,b1,d1,params,seed,save_dir=None):
     plt.figure(figsize=(8,8))
     plt.title(f"b0={b0},d0={d0},b1={b1},d1={d1},{params}")
 
@@ -184,6 +185,43 @@ def plot_dist(b0,d0,b1,d1,params,seed):
     N_ensemble=list(x[-1] for x in N_ensemble)
     plt.hist(N_ensemble,bins=200,density=True,label=f"seed={seed}")
     plt.grid()
+    if save_dir is None:
     #plt.legend(loc='upper right',fontsize=10)
-    plt.show()
+        plt.show()
+    else:
+        file_name=f"hist_distribution_b0={b0}_d0={d0}_b1={b1}_d1={d1}_{params}"
+        plt.savefig(save_dir/file_name,dpi=300)
 
+def fano_plot1(b1:float,
+                      d1:float,
+                      b0_size:int,
+                      params:SimParam,
+                      seeds:int,
+                      max_CPU:int|None=None,
+                      save_dir=None):
+    mu_val,mean_N,mean_N_pred,fano,fano_pred=mu_sweep_fano(b1,d1,b0_size,params,seeds,max_CPU)
+    plt.figure(figsize=(12,8))
+    plt.suptitle(f"Estimation with b1={b1},d1={d1},b0+d0=1,Dr={params.Dr},R={params.R},t={params.t},dt={params.dt}")
+
+    plt.subplot(1,2,1)
+    plt.xlabel("mu")
+    plt.plot(mu_val,(mu_val)(params.L)**2/((b1+d1)*np.pi*params.R*params.R),"--",label="N*")
+    plt.plot(mu_val,mean_N,label=f"<N>")
+    plt.plot(mu_val,mean_N_pred,"-o",label=f"pred. <N>")
+    plt.title("Mean Population")
+        
+    plt.subplot(1,2,2)
+    plt.xlabel("mu")
+    plt.title("Fano-factor")
+    plt.plot(mu_val,fano,label=f"Fano-Factor")
+    plt.plot(mu_val,fano_pred,"-o",label=f"Fano_pred.")
+    filename=f"estimate_of_mean_and_fano_for_b0+d0=1_b1={b1}_d1={d1}_{params}"
+    if save_dir is None:
+        plt.show()
+    else:
+        plt.savefig(save_dir/filename,dpi=300)
+
+'''params=SimParam(t=100)
+if __name__=='__main__':
+    fano_plot1(0,0.04,20,params,1000,8,SAVE_DIR_4)
+    plot_seed_convergence(0.5,0.3,0.02,0.02,params,[5000],8,SAVE_DIR_1)   '''

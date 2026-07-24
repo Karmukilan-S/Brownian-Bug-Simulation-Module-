@@ -6,8 +6,7 @@ from concurrent.futures import ProcessPoolExecutor
 from .config import SimParam
 from .engine import simulate
 from .ensemble import run_job,ensemble_simulate
-
-
+from .stat import stat2
 
 
 def Mu_sweep_1(mu_val:np.ndarray,
@@ -97,3 +96,27 @@ def s_sweep_1(
               f"<N>={np.mean(N_ensemble):.3f}|"
               f"pred={N_star-np.mean(eta*eta)/N_star:.3f}|")
     return d1_val,np.array(mean_N),N_star-np.array(eta_2)/N_star
+
+def mu_sweep_fano(b1:float,
+                      d1:float,
+                      b0_size:int,
+                      params:SimParam,
+                      seeds:int,
+                      max_CPU:int|None=None):
+    b0_val=np.linspace(0.55,1,b0_size)
+    mu_val=[]
+    mean_N_val=[]
+    fano_val=[]
+    for b0 in b0_val:
+        mu,meanN,fano=stat2(b0,1-b0,b1,d1,params,seeds,max_CPU)
+        mu_val.append(mu)
+        mean_N_val.append(meanN)
+        fano_val.append(fano)
+        print(f"mu={2*b0-1:.3f}||<N>={meanN:.3f}||"
+              f"pred<N>={(2*b0-1)*(params.L)*(params.L)/((b1+d1)*np.pi*params.R*params.R)-(1-b0)/(2*b0-1)+d1/(d1+b1):.3f}||"
+              f"fano={fano}||fano_pred={(1-b0)/(2*b0-1)+d1/(d1+b1):.3f}")
+    fano_pred=(1-b0_val)/(2*b0_val-1)+d1/(d1+b1)
+    N_star=(2*b0_val-1)*(params.L)*(params.L)/((b1+d1)*np.pi*params.R*params.R)
+    mean_pred=N_star-fano_pred
+    
+    return np.array(mu_val),np.array(mean_N_val),np.array(mean_pred),np.array(fano),np.array(fano_pred)
